@@ -1,7 +1,8 @@
+from ereuse_devicehub.resources.device import Computer
 from ereuse_devicehub.resources.device.models import DataStorage, Device
 
 
-class BaseScore:
+class BaseRate:
     def compute(self, device: Device):
         raise NotImplementedError()
 
@@ -22,7 +23,7 @@ class BaseScore:
         and the other with 4GB and 200MB/speed,
         the merger will result in a 6GB with 166MB/speed.
         """
-        pass
+        raise NotImplementedError()
 
     def component_characteristic_normalisation(self, device: Computer):
         """
@@ -31,6 +32,7 @@ class BaseScore:
         xMin and xMax and apply the standardisation formula,
         y = (x −xMin)/(xMax −xMin)
         """
+        raise NotImplementedError()
 
     def component_characteristic_rate(self, device: Computer):
         """
@@ -38,15 +40,18 @@ class BaseScore:
         The key to adapting the algorithm is that the value p = 0.242 matches
         the minimum desirable value of this characteristic.
         """
+        raise NotImplementedError()
 
     def component_characteristic_fusion(self, device: Computer):
         """
         Established community weights and merge rate with the aesthetic and functionality scores
 
         """
-        component_fusion((self, device: Computer)
+        self.component_fusion(device)
 
-        device_fusion((self, device: Computer)
+        self.device_fusion(device)
+
+        raise NotImplementedError()
 
     def component_fusion(self, device: Computer):
         """
@@ -54,14 +59,16 @@ class BaseScore:
         Established community weights are 50% for processor, 20% for disk and 30% for memory.
         The result is a unique score.
         """
+        raise NotImplementedError()
 
     def device_fusion(self, device: Computer):
         """
          Merge score with the aesthetic and functionality scores
          Score final [−2,4.7] += Score aest [−1,0.3]+ Score funct [−1,0.4]
         """
+        raise NotImplementedError()
 
 
-class DataStorageScore(BaseScore):
+class _DataStorageRate(BaseRate):
     def compute(self, device: DataStorage):
         raise NotImplementedError()

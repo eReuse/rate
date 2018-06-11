@@ -5,12 +5,12 @@ from ereuse_devicehub.resources.enums import AggregateRatingVersions
 from ereuse_devicehub.resources.event.models import AggregateRate, PhotoboxRate, Rate, \
     WorkbenchRate
 
-from score.workbench import v1_0
+from ereuse_rate.workbench import v1_0
 
 RATE_TYPES = {
     WorkbenchRate: {
-        StrictVersion('1.0'): v1_0.Score,
-        StrictVersion('2.0'): v2_0.Score
+        StrictVersion('1.0'): v1_0.Rate,
+        StrictVersion('2.0'): v2_0.Rate
     }
 }
 
