@@ -1,132 +1,53 @@
-from ereuse_devicehub.resources.device import Computer, RamModule
-from ereuse_devicehub.resources.device.models import DataStorage, Device, Processor
+import math
+from typing import Iterable
+
+from ereuse_devicehub.resources.device.models import DataStorage, Device, Processor, RamModule
+from ereuse_devicehub.resources.event.models import WorkbenchRate
 
 
 class BaseRate:
-    def compute(self, device: Device):
-        self.filtering_and_cleaning_input(device)
-        self.components_parts_fusion(device)
-        self.component_characteristic_normalisation(device)
-        self.component_characteristic_rate(device)
-        self.component_characteristic_fusion(device)
 
-    def filtering_and_cleaning_input(self, device: Computer):
-        """
-        Check if input device_type is desktop or laptop.
-        Get and check all the data of components are valid to prepare it
-        for post calculate device score.
-        """
-        assert device.type == 'Desktop' or 'Laptop' or 'Server'
+    """Processor has 50% of weight over total score, used in harmonic mean"""
+    PROCESSOR_WEIGHT = 0.5
+    """Storage has 20% of weight over total score, used in harmonic mean"""
+    DATA_STORAGE_WEIGHT = 0.2
+    """Ram has 30% of weight over total score, used in harmonic mean"""
+    RAM_WEIGHT = 0.3
 
-    def components_parts_fusion(self, device: object) -> object:
-        """
-        Merges all the characteristics of same type of component in one.
-        For example, if we have two 100 GB disks, the result of the drive.
-        size variable will be 200 GB. For example,
-        if we have two RAM cards, one with 2GB and 100MB/speed,
-        and the other with 4GB and 200MB/speed,
-        the merger will result in a 6GB with 166MB/speed.
-        """
+    def compute(self, device: Device, rate: WorkbenchRate):
         raise NotImplementedError()
 
-    def component_characteristic_normalisation(self, device: Computer):
-        """
-        Normalise between 0 and 1 the characteristics of the components.
-        We use the "Values of Characteristics" table with the values
-        xMin and xMax and apply the standardisation formula,
-        y = (x −xMin)/(xMax −xMin)
-        """
-        raise NotImplementedError()
+    @staticmethod
+    def norm(x, x_min, x_max):
+        return (x - x_min) / (x_max - x_min)
 
-    def component_characteristic_rate(self, device: Computer):
-        """
-        Apply a distribution all the scores
-        The key to adapting the algorithm is that the value p = 0.242 matches
-        the minimum desirable value of this characteristic.
-        """
-        raise NotImplementedError()
+    @staticmethod
+    def rate_log(x):
+        return math.log10(2*x) + 3.57  # todo magic number!
 
-    def component_characteristic_fusion(self, device: Computer):
-        """
-        Established community weights and merge rate with the aesthetic and functionality scores
+    @staticmethod
+    def rate_lin(x):
+        return 7*x + 0.06  # todo magic number!
 
-        """
-        self.component_fusion(device)
+    @staticmethod
+    def rate_exp(x):
+        return math.exp(x) / (2 - math.exp(x))
 
-        self.device_fusion(device)
-
-    def component_fusion(self, device: Computer):
-        """
-        We do the weighted harmonic mean.
-        Established community weights are 50% for processor, 20% for disk and 30% for memory.
-        The result is a unique score.
-        """
-        raise NotImplementedError()
-
-    def device_fusion(self, device: Computer):
-        """
-        Merge score with the aesthetic and functionality scores
-        Score final [−2,4.7] += Score aest [−1,0.3]+ Score funct [−1,0.4]
-        """
-        raise NotImplementedError()
+    @staticmethod
+    def harmonic_mean(weights: Iterable[float], rates: Iterable[float]):
+        return sum(weights) / sum(char / rate for char, rate in zip(weights, rates))
 
 
 class DataStorageRate(BaseRate):
-
-    def compute(self, device: DataStorage):
-        raise NotImplementedError()
-
-    def components_parts_fusion(self, device: object) -> object:
-        raise NotImplementedError()
-
-    def component_characteristic_normalisation(self, device: Computer):
-        raise NotImplementedError()
-
-    def component_characteristic_rate(self, device: Computer):
-        raise NotImplementedError()
-
-    def component_fusion(self, device: Computer):
-        raise NotImplementedError()
-
-    def device_fusion(self, device: Computer):
+    def compute(self, device: DataStorage, rate: WorkbenchRate):
         raise NotImplementedError()
 
 
 class RamRate(BaseRate):
-    def compute(self, device: RamModule):
-        raise NotImplementedError()
-
-    def components_parts_fusion(self, device: object) -> object:
-        raise NotImplementedError()
-
-    def component_characteristic_normalisation(self, device: Computer):
-        raise NotImplementedError()
-
-    def component_characteristic_rate(self, device: Computer):
-        raise NotImplementedError()
-
-    def component_fusion(self, device: Computer):
-        raise NotImplementedError()
-
-    def device_fusion(self, device: Computer):
+    def compute(self, device: RamModule, rate: WorkbenchRate):
         raise NotImplementedError()
 
 
 class ProcessorRate(BaseRate):
-    def compute(self, device: Processor):
-        raise NotImplementedError()
-
-    def components_parts_fusion(self, device: object) -> object:
-        raise NotImplementedError()
-
-    def component_characteristic_normalisation(self, device: Computer):
-        raise NotImplementedError()
-
-    def component_characteristic_rate(self, device: Computer):
-        raise NotImplementedError()
-
-    def component_fusion(self, device: Computer):
-        raise NotImplementedError()
-
-    def device_fusion(self, device: Computer):
+    def compute(self, device: Processor, rate: WorkbenchRate):
         raise NotImplementedError()
