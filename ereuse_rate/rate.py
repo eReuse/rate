@@ -1,10 +1,14 @@
-from ereuse_devicehub.resources.device import Computer
-from ereuse_devicehub.resources.device.models import DataStorage, Device
+from ereuse_devicehub.resources.device import Computer, RamModule
+from ereuse_devicehub.resources.device.models import DataStorage, Device, Processor
 
 
 class BaseRate:
     def compute(self, device: Device):
-        raise NotImplementedError()
+        self.filtering_and_cleaning_input(device)
+        self.components_parts_fusion(device)
+        self.component_characteristic_normalisation(device)
+        self.component_characteristic_rate(device)
+        self.component_characteristic_fusion(device)
 
     def filtering_and_cleaning_input(self, device: Computer):
         """
@@ -12,7 +16,7 @@ class BaseRate:
         Get and check all the data of components are valid to prepare it
         for post calculate device score.
         """
-        raise NotImplementedError()
+        assert device.type == 'Desktop' or 'Laptop' or 'Server'
 
     def components_parts_fusion(self, device: object) -> object:
         """
@@ -51,8 +55,6 @@ class BaseRate:
 
         self.device_fusion(device)
 
-        raise NotImplementedError()
-
     def component_fusion(self, device: Computer):
         """
         We do the weighted harmonic mean.
@@ -63,12 +65,68 @@ class BaseRate:
 
     def device_fusion(self, device: Computer):
         """
-         Merge score with the aesthetic and functionality scores
-         Score final [−2,4.7] += Score aest [−1,0.3]+ Score funct [−1,0.4]
+        Merge score with the aesthetic and functionality scores
+        Score final [−2,4.7] += Score aest [−1,0.3]+ Score funct [−1,0.4]
         """
         raise NotImplementedError()
 
 
-class _DataStorageRate(BaseRate):
+class DataStorageRate(BaseRate):
+
     def compute(self, device: DataStorage):
+        raise NotImplementedError()
+
+    def components_parts_fusion(self, device: object) -> object:
+        raise NotImplementedError()
+
+    def component_characteristic_normalisation(self, device: Computer):
+        raise NotImplementedError()
+
+    def component_characteristic_rate(self, device: Computer):
+        raise NotImplementedError()
+
+    def component_fusion(self, device: Computer):
+        raise NotImplementedError()
+
+    def device_fusion(self, device: Computer):
+        raise NotImplementedError()
+
+
+class RamRate(BaseRate):
+    def compute(self, device: RamModule):
+        raise NotImplementedError()
+
+    def components_parts_fusion(self, device: object) -> object:
+        raise NotImplementedError()
+
+    def component_characteristic_normalisation(self, device: Computer):
+        raise NotImplementedError()
+
+    def component_characteristic_rate(self, device: Computer):
+        raise NotImplementedError()
+
+    def component_fusion(self, device: Computer):
+        raise NotImplementedError()
+
+    def device_fusion(self, device: Computer):
+        raise NotImplementedError()
+
+
+class ProcessorRate(BaseRate):
+    def compute(self, device: Processor):
+        raise NotImplementedError()
+
+    def components_parts_fusion(self, device: object) -> object:
+        raise NotImplementedError()
+
+    def component_characteristic_normalisation(self, device: Computer):
+        raise NotImplementedError()
+
+    def component_characteristic_rate(self, device: Computer):
+        raise NotImplementedError()
+
+    def component_fusion(self, device: Computer):
+        raise NotImplementedError()
+
+    def device_fusion(self, device: Computer):
         raise NotImplementedError()

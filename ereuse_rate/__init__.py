@@ -25,7 +25,7 @@ def rate(device: Device, rate: Rate):
     assert cls in RATE_TYPES, 'Rate type {} not supported.'.format(cls)
     assert rate.algorithm_version in RATE_TYPES[cls], 'Rate version {} not supported.' \
                                                       ''.format(rate.algorithm_version)
-    RATE_TYPES[cls][rate.algorithm_version](device, rate)
+    RATE_TYPES[cls][rate.algorithm_version].compute(device, rate)
 
 
 def aggregate_ratings(device: Device, aggregate_rate: AggregateRate):
