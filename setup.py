@@ -10,7 +10,7 @@ setup(
     author_email='x.bustamante@ereuse.org',
     description='',
     install_requires=[
-    ],
+        'pytest'],
     tests_requires=[
     ],
     classifiers={

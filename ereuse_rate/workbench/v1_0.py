@@ -2,7 +2,7 @@ from collections import namedtuple
 from enum import Enum
 from itertools import groupby
 from operator import attrgetter
-from typing import Iterable, Collection
+from typing import Iterable
 
 from ereuse_devicehub.resources.device.models import Computer, DataStorage, RamModule, Processor
 from ereuse_devicehub.resources.event.models import WorkbenchRate, BenchmarkDataStorage
@@ -17,10 +17,9 @@ class Rate(BaseRate):
     """
     Rate all components in Computer
     """
-    """
-    Components general weights, Processor has 50%, Storage has 20% 
-    and Ram has 30% of weight over total score, used in harmonic mean
-    """
+
+    # Components general weights, Processor has 50%, Storage has 20%
+    # and Ram has 30% of weight over total score, used in harmonic mean
     COMPONENTS_WEIGHTS = 0.5, 0.2, 0.3
 
     class Range(Enum):
@@ -54,7 +53,7 @@ class Rate(BaseRate):
 
     def compute(self, device: Computer, rate: WorkbenchRate):
         """Compute rate
-            :return result is a rate (score) ranging from 0 to 4.7 that represents estimating value of use
+            :return: result is a rate (score) ranging from 0 to 4.7 that represents estimating value of use
                     of desktop and laptop computer components
         """
         assert device.type == 'Desktop' or 'Laptop' or 'Server'
@@ -89,7 +88,7 @@ class ProcessorRate(_ProcessorRate):
     def compute(self, processor_device: Processor, rate: WorkbenchRate):
         """ Compute processor rate
             Obs: cores and speed are possible NULL value
-            :return result is a rate (score) of Processor characteristic
+            :return: result is a rate (score) of Processor characteristic
         """
         cores = processor_device.cores or self.DEFAULT_CORES
         speed = processor_device.speed or self.DEFAULT_SPEED
@@ -98,16 +97,17 @@ class ProcessorRate(_ProcessorRate):
         processor_rate = (self.DEFAULT_SCORE + speed * 2000 * cores) / 2  # todo magic number!
 
         # STEP: Normalize values
-        processor_norm = self.norm(processor_rate, *self.PROCESSOR_NORM)
+        processor_norm = self.norm(processor_rate, *self.PROCESSOR_NORM) or 0
 
         # STEP: Compute rate/score from every component
         # Calculate processor_rate
+        if processor_norm >= self.CEXP:
+            processor_rate = self.rate_exp(processor_norm)
+        if self.CLIN <= processor_norm < self.CLOG:
+            processor_rate = self.rate_lin(processor_norm)
         if processor_norm >= self.CLOG:
             processor_rate = self.rate_log(processor_norm)
-        elif self.CLIN <= processor_norm < self.CLOG:
-            processor_rate = self.rate_lin(processor_norm)
-        elif self.CEXP <= processor_norm < self.CLIN:
-            processor_rate = self.rate_exp(processor_norm)
+
         rate.processor = processor_rate
         return rate.processor
 
@@ -122,10 +122,10 @@ class RamRate(_RamRate):
     # ram.size.weight; ram.speed.weight;
     RAM_WEIGHTS = 0.7, 0.3
 
-    def compute(self, ram_devices: Collection[RamModule], rate: WorkbenchRate):
+    def compute(self, ram_devices, rate: WorkbenchRate):
         """
         Obs: RamModule.speed is possible NULL value & size != NULL or NOT??
-        :return result is a rate (score) of all RamModule components
+        :return: result is a rate (score) of all RamModule components
         """
         size = 0
         speed = 0
@@ -146,23 +146,23 @@ class RamRate(_RamRate):
 
         # STEP: Compute rate/score from every component
             # Calculate size_rate
+            if self.CEXP <= size_norm < self.CLIN:
+                size_rate = self.rate_exp(size_norm)
+            if self.CLIN <= size_norm < self.CLOG:
+                size_rate = self.rate_lin(size_norm)
             if size_norm >= self.CLOG:
                 size_rate = self.rate_log(size_norm)
-            elif self.CLIN <= size_norm < self.CLOG:
-                size_rate = self.rate_lin(size_norm)
-            elif self.CEXP <= size_norm < self.CLIN:
-                size_rate = self.rate_exp(size_norm)
             # Calculate read_speed_rate
+            if self.CEXP <= size_norm < self.CLIN:
+                ram_speed_rate = self.rate_exp(ram_speed_norm)
+            if self.CLIN <= ram_speed_norm < self.CLOG:
+                ram_speed_rate = self.rate_lin(ram_speed_norm)
             if ram_speed_norm >= self.CLOG:
                 ram_speed_rate = self.rate_log(ram_speed_norm)
-            elif self.CLIN <= ram_speed_norm < self.CLOG:
-                ram_speed_rate = self.rate_lin(ram_speed_norm)
-            elif self.CEXP <= ram_speed_norm < self.CLIN:
-                ram_speed_rate = self.rate_exp(ram_speed_norm)
 
         # STEP: Fusion Characteristics
             ram_rates = size_rate, ram_speed_rate
-            rate.ram = self.harmonic_mean(*self.RAM_WEIGHTS, *ram_rates)
+            rate.ram = self.harmonic_mean(self.RAM_WEIGHTS, ram_rates)
             return rate.ram
         else:
             return 0
@@ -179,17 +179,17 @@ class DataStorageRate(_DataStorageRate):
     # drive.size.weight; drive.readingSpeed.weight; drive.writingSpeed.weight;
     DATA_STORAGE_WEIGHTS = 0.5, 0.25, 0.25
 
-    def compute(self, storages: Iterable[DataStorage], rate: WorkbenchRate):
+    def compute(self, data_storage_devices: Iterable[DataStorage], rate: WorkbenchRate):
         """
         Obs: size is possible NULL value & read_speed and write_speed != NULL
-        :return result is a rate (score) of all DataStorage devices
+        :return: result is a rate (score) of all DataStorage devices
         """
         size = 0
         read_speed = 0
         write_speed = 0
 
         # STEP: Filtering, data cleaning and merging of component parts
-        for storage in storages:
+        for storage in data_storage_devices:
             benchmark = next(e for e in storage.events if isinstance(e, BenchmarkDataStorage))
             # prevent NULL value
             _size = storage.size or 0
@@ -233,7 +233,7 @@ class DataStorageRate(_DataStorageRate):
 
         # STEP: Fusion Characteristics
             data_storage_rates = size_rate, read_speed_rate, write_speed_rate
-            rate.data_storage = self.harmonic_mean(*self.DATA_STORAGE_WEIGHTS, *data_storage_rates)
+            rate.data_storage = self.harmonic_mean(self.DATA_STORAGE_WEIGHTS, data_storage_rates)
             return rate.data_storage
         else:
             return 0

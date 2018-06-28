@@ -7,13 +7,6 @@ from ereuse_devicehub.resources.event.models import WorkbenchRate
 
 class BaseRate:
 
-    """Processor has 50% of weight over total score, used in harmonic mean"""
-    PROCESSOR_WEIGHT = 0.5
-    """Storage has 20% of weight over total score, used in harmonic mean"""
-    DATA_STORAGE_WEIGHT = 0.2
-    """Ram has 30% of weight over total score, used in harmonic mean"""
-    RAM_WEIGHT = 0.3
-
     """growing exponential from this value"""
     CEXP = 0
     """growing lineal starting on this value"""
@@ -46,15 +39,15 @@ class BaseRate:
 
 
 class DataStorageRate(BaseRate):
-    def compute(self, device: DataStorage, rate: WorkbenchRate):
+    def compute(self, devices: Iterable[DataStorage], rate: WorkbenchRate):
         raise NotImplementedError()
 
 
 class RamRate(BaseRate):
-    def compute(self, device: RamModule, rate: WorkbenchRate):
+    def compute(self, devices: Iterable[RamModule], rate: WorkbenchRate):
         raise NotImplementedError()
 
 
 class ProcessorRate(BaseRate):
-    def compute(self, device: Processor, rate: WorkbenchRate):
+    def compute(self, devices: Iterable[Processor], rate: WorkbenchRate):
         raise NotImplementedError()
