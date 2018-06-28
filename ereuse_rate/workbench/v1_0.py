@@ -53,7 +53,10 @@ class Rate(BaseRate):
         }
 
     def compute(self, device: Computer, rate: WorkbenchRate):
-        """Compute rate"""
+        """Compute rate
+            :return result is a rate (score) ranging from 0 to 4.7 that represents estimating value of use
+                    of desktop and laptop computer components
+        """
         assert device.type == 'Desktop' or 'Laptop' or 'Server'
         assert isinstance(rate, WorkbenchRate)
 
@@ -75,8 +78,6 @@ class ProcessorRate(_ProcessorRate):
     """
     # processor.xMin, processor.xMax
     PROCESSOR_NORM = 3196.17, 17503.81
-    # processor.normal.score; not use it, useful??
-    PROCESSOR_NORM_SCORE = 9587.68
 
     DEFAULT_CORES = 1
     DEFAULT_SPEED = 1.6
@@ -88,6 +89,7 @@ class ProcessorRate(_ProcessorRate):
     def compute(self, processor_device: Processor, rate: WorkbenchRate):
         """ Compute processor rate
             Obs: cores and speed are possible NULL value
+            :return result is a rate (score) of Processor characteristic
         """
         cores = processor_device.cores or self.DEFAULT_CORES
         speed = processor_device.speed or self.DEFAULT_SPEED
@@ -114,9 +116,6 @@ class RamRate(_RamRate):
     """
     Calculate a RamRate of all RamModule devices
     """
-    # ram.speed.factor; not use it useful??
-    RAM_SPEED_FACTOR = 3.7
-
     # ram.size.xMin; ram.size.xMax
     SIZE_NORM = 256, 8192
     RAM_SPEED_NORM = 133, 1333
@@ -125,14 +124,15 @@ class RamRate(_RamRate):
 
     def compute(self, ram_devices: Collection[RamModule], rate: WorkbenchRate):
         """
-        Obs: RamModule.speed is possible NULL value & size != NULL
+        Obs: RamModule.speed is possible NULL value & size != NULL or NOT??
+        :return result is a rate (score) of all RamModule components
         """
         size = 0
         speed = 0
 
         # STEP: Filtering, data cleaning and merging of component parts
         for ram in ram_devices:
-            size += ram.size
+            size += ram.size or 0
             speed += (ram.speed or 0) * size
 
         # STEP: Fusion components
@@ -172,10 +172,6 @@ class DataStorageRate(_DataStorageRate):
     """
     Calculate the rate of all DataStorage devices
     """
-    # useful weights?? never NULL values from speeds
-    WRITING_SPEED_FACTOR = 10000
-    READING_SPEED_FACTOR = 3000
-
     # drive.size.xMin; drive.size.xMax
     SIZE_NORM = 4, 265000
     READ_SPEED_NORM = 2.7, 109.5
@@ -186,6 +182,7 @@ class DataStorageRate(_DataStorageRate):
     def compute(self, storages: Iterable[DataStorage], rate: WorkbenchRate):
         """
         Obs: size is possible NULL value & read_speed and write_speed != NULL
+        :return result is a rate (score) of all DataStorage devices
         """
         size = 0
         read_speed = 0
