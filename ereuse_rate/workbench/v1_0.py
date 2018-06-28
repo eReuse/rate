@@ -68,12 +68,16 @@ class Rate(BaseRate):
 
         rate.rating = max(rate_components + rate.functionality + rate.appearance, 0)
 
+
 class ProcessorRate(_ProcessorRate):
     """
     Calculate a ProcessorRate of all Processor devices
     """
-    # processor.normal.score;
-    PROCESSOR_NORM = 9587.68
+    # processor.xMin, processor.xMax
+    PROCESSOR_NORM = 3196.17, 17503.81
+    # processor.normal.score; not use it, useful??
+    PROCESSOR_NORM_SCORE = 9587.68
+
     DEFAULT_CORES = 1
     DEFAULT_SPEED = 1.6
     # In case of i2, i3,.. result penalized.
@@ -82,7 +86,9 @@ class ProcessorRate(_ProcessorRate):
     DEFAULT_SCORE = 4000
 
     def compute(self, processor_device: Processor, rate: WorkbenchRate):
-        """"""
+        """ Compute processor rate
+            Obs: cores and speed are possible NULL value
+        """
         cores = processor_device.cores or self.DEFAULT_CORES
         speed = processor_device.speed or self.DEFAULT_SPEED
 
@@ -90,7 +96,7 @@ class ProcessorRate(_ProcessorRate):
         processor_rate = (self.DEFAULT_SCORE + speed * 2000 * cores) / 2  # todo magic number!
 
         # STEP: Normalize values
-        processor_norm = self.norm(processor_rate, self.PROCESSOR_NORM)
+        processor_norm = self.norm(processor_rate, *self.PROCESSOR_NORM)
 
         # STEP: Compute rate/score from every component
         # Calculate processor_rate
@@ -108,6 +114,9 @@ class RamRate(_RamRate):
     """
     Calculate a RamRate of all RamModule devices
     """
+    # ram.speed.factor; not use it useful??
+    RAM_SPEED_FACTOR = 3.7
+
     # ram.size.xMin; ram.size.xMax
     SIZE_NORM = 256, 8192
     RAM_SPEED_NORM = 133, 1333
@@ -115,14 +124,16 @@ class RamRate(_RamRate):
     RAM_WEIGHTS = 0.7, 0.3
 
     def compute(self, ram_devices: Collection[RamModule], rate: WorkbenchRate):
-        """"""
+        """
+        Obs: RamModule.speed is possible NULL value & size != NULL
+        """
         size = 0
         speed = 0
 
         # STEP: Filtering, data cleaning and merging of component parts
         for ram in ram_devices:
-            size += ram.size or 0
-            speed += ram.speed * size  # todo rename var module_speed
+            size += ram.size
+            speed += (ram.speed or 0) * size
 
         # STEP: Fusion components
         # Check almost have one ram module
@@ -153,12 +164,15 @@ class RamRate(_RamRate):
             ram_rates = size_rate, ram_speed_rate
             rate.ram = self.harmonic_mean(*self.RAM_WEIGHTS, *ram_rates)
             return rate.ram
+        else:
+            return 0
 
 
 class DataStorageRate(_DataStorageRate):
     """
     Calculate the rate of all DataStorage devices
     """
+    # useful weights?? never NULL values from speeds
     WRITING_SPEED_FACTOR = 10000
     READING_SPEED_FACTOR = 3000
 
@@ -169,15 +183,10 @@ class DataStorageRate(_DataStorageRate):
     # drive.size.weight; drive.readingSpeed.weight; drive.writingSpeed.weight;
     DATA_STORAGE_WEIGHTS = 0.5, 0.25, 0.25
 
-    CEXP = 0
-    """growing exponential from this value"""
-    CLIN = 242
-    """growing lineal starting on this value"""
-    CLOG = 0.5
-    """growing logaritmic starting on this value"""
-
     def compute(self, storages: Iterable[DataStorage], rate: WorkbenchRate):
-        """ """
+        """
+        Obs: size is possible NULL value & read_speed and write_speed != NULL
+        """
         size = 0
         read_speed = 0
         write_speed = 0
@@ -185,6 +194,7 @@ class DataStorageRate(_DataStorageRate):
         # STEP: Filtering, data cleaning and merging of component parts
         for storage in storages:
             benchmark = next(e for e in storage.events if isinstance(e, BenchmarkDataStorage))
+            # prevent NULL value
             _size = storage.size or 0
             size += _size
             read_speed += benchmark.read_speed * _size
@@ -196,12 +206,12 @@ class DataStorageRate(_DataStorageRate):
             read_speed /= size
             write_speed /= size
 
-            # STEP: Normalize values
+        # STEP: Normalize values
             size_norm = self.norm(size, *self.SIZE_NORM)
             read_speed_norm = self.norm(read_speed, *self.READ_SPEED_NORM)
             write_speed_norm = self.norm(write_speed, *self.WRITE_SPEED_NORM)
 
-            # STEP: Compute rate/score from every component
+        # STEP: Compute rate/score from every component
             # Calculate size_rate
             if size_norm >= self.CLOG:
                 size_rate = self.rate_log(size_norm)
@@ -224,7 +234,9 @@ class DataStorageRate(_DataStorageRate):
             elif self.CEXP <= write_speed_norm < self.CLIN:
                 write_speed_rate = self.rate_exp(write_speed_norm)
 
-            # STEP: Fusion Characteristics
+        # STEP: Fusion Characteristics
             data_storage_rates = size_rate, read_speed_rate, write_speed_rate
             rate.data_storage = self.harmonic_mean(*self.DATA_STORAGE_WEIGHTS, *data_storage_rates)
             return rate.data_storage
+        else:
+            return 0

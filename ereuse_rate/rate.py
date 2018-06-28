@@ -14,6 +14,13 @@ class BaseRate:
     """Ram has 30% of weight over total score, used in harmonic mean"""
     RAM_WEIGHT = 0.3
 
+    """growing exponential from this value"""
+    CEXP = 0
+    """growing lineal starting on this value"""
+    CLIN = 242
+    """growing logarithmic starting on this value"""
+    CLOG = 0.5
+
     def compute(self, device: Device, rate: WorkbenchRate):
         raise NotImplementedError()
 
