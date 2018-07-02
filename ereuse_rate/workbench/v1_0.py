@@ -1,7 +1,6 @@
 from collections import namedtuple
 from enum import Enum
 from itertools import groupby
-from operator import attrgetter
 from typing import Iterable
 
 from ereuse_devicehub.resources.device.models import Computer, DataStorage, RamModule, Processor
@@ -13,12 +12,15 @@ from ereuse_rate.rate import DataStorageRate as _DataStorageRate
 from ereuse_rate.rate import RamRate as _RamRate
 from ereuse_rate.rate import ProcessorRate as _ProcessorRate
 
+# todo need to return components rates in funcs??
+# todo if no return assign then rate_c = 1 is assigned
+
 
 class Rate(BaseRate):
     """
     Rate all components in Computer
     """
-
+    # todo need it WEIGHTS if have it in BaseRate
     # Components general weights, Processor has 50%, Storage has 20%
     # and Ram has 30% of weight over total score, used in harmonic mean
     COMPONENTS_WEIGHTS = 0.5, 0.2, 0.3
@@ -49,23 +51,24 @@ class Rate(BaseRate):
         self.RATES = {
             Processor.t: ProcessorRate(),
             RamModule.t: RamRate(),
-            DataStorage.t: DataStorageRate(),
+            DataStorage.t: DataStorageRate()
         }
 
     def compute(self, device: Computer, rate: WorkbenchRate):
-        """Compute rate
-            :return: result is a rate (score) ranging from 0 to 4.7 that represents estimating value of use
-                    of desktop and laptop computer components
+        """Compute 'Workbench'Rate computer is a rate (score) ranging from 0 to 4.7
+        that represents estimating value of use of desktop and laptop computer components
         """
         assert device.type == 'Desktop' or 'Laptop' or 'Server'
         assert isinstance(rate, WorkbenchRate)
 
-        clause = attrgetter('type')
+        clause = lambda x: DataStorage.t if isinstance(x, DataStorage) else x.t
         rates = namedtuple('Rates', [DataStorage.t, Processor.t, RamModule.t])
         for type, components in groupby(sorted(device.components, key=clause), key=clause):
+            if type == Processor.t:
+                components = next(components)
             setattr(rates, type, self.RATES[type].compute(components, rate))
 
-        rate_components = self.harmonic_mean(*self.COMPONENTS_WEIGHTS, *rates)
+        rate_components = self.harmonic_mean_3(rate.processor, rate.data_storage, rate.ram)
         rate.appearance = self.Appearance.from_devicehub(rate.appearance_range).value
         rate.functionality = self.Functionality.from_devicehub(rate.functionality_range).value
 
@@ -83,7 +86,6 @@ class ProcessorRate(_ProcessorRate):
     DEFAULT_SPEED = 1.6
     # In case of i2, i3,.. result penalized.
     # Intel(R) Core(TM) i3 CPU 530 @ 2.93GHz, score = 23406.92 but results inan score of 17503.
-    # TODO: Multiply i1, i2,... for a constant
     DEFAULT_SCORE = 4000
 
     def compute(self, processor: Processor, rate: WorkbenchRate):
@@ -91,6 +93,7 @@ class ProcessorRate(_ProcessorRate):
             Obs: cores and speed are possible NULL value
             :return: result is a rate (score) of Processor characteristics
         """
+        # todo for processor_device in processors; more than one processor
         cores = processor.cores or self.DEFAULT_CORES
         speed = processor.speed or self.DEFAULT_SPEED
         benchmark_cpu = next(e for e in processor.events if isinstance(e, BenchmarkProcessor))
@@ -144,11 +147,11 @@ class RamRate(_RamRate):
         if size:
             speed /= size
 
-        # STEP: Normalize values
+            # STEP: Normalize values
             size_norm = self.norm(size, *self.SIZE_NORM) or 0
             ram_speed_norm = self.norm(speed, *self.RAM_SPEED_NORM) or 0
 
-        # STEP: Compute rate/score from every component
+            # STEP: Compute rate/score from every component
             # Calculate size_rate
             if self.CEXP <= size_norm < self.CLIN:
                 size_rate = self.rate_exp(size_norm)
@@ -164,7 +167,7 @@ class RamRate(_RamRate):
             if ram_speed_norm >= self.CLOG:
                 ram_speed_rate = self.rate_log(ram_speed_norm)
 
-        # STEP: Fusion Characteristics
+            # STEP: Fusion Characteristics
             rate.ram = self.harmonic_mean(self.RAM_WEIGHTS, rates=(size_rate, ram_speed_rate))
             return rate.ram
         else:
@@ -206,12 +209,12 @@ class DataStorageRate(_DataStorageRate):
             read_speed /= size
             write_speed /= size
 
-        # STEP: Normalize values
+            # STEP: Normalize values
             size_norm = self.norm(size, *self.SIZE_NORM)
             read_speed_norm = self.norm(read_speed, *self.READ_SPEED_NORM)
             write_speed_norm = self.norm(write_speed, *self.WRITE_SPEED_NORM)
 
-        # STEP: Compute rate/score from every component
+            # STEP: Compute rate/score from every component
             # Calculate size_rate
             if size_norm >= self.CLOG:
                 size_rate = self.rate_log(size_norm)
@@ -234,7 +237,7 @@ class DataStorageRate(_DataStorageRate):
             elif self.CEXP <= write_speed_norm < self.CLIN:
                 write_speed_rate = self.rate_exp(write_speed_norm)
 
-        # STEP: Fusion Characteristics
+            # STEP: Fusion Characteristics
             data_storage_rates = size_rate, read_speed_rate, write_speed_rate
             rate.data_storage = self.harmonic_mean(self.DATA_STORAGE_WEIGHTS, data_storage_rates)
             return rate.data_storage
