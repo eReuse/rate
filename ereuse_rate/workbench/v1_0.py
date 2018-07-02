@@ -5,7 +5,8 @@ from operator import attrgetter
 from typing import Iterable
 
 from ereuse_devicehub.resources.device.models import Computer, DataStorage, RamModule, Processor
-from ereuse_devicehub.resources.event.models import WorkbenchRate, BenchmarkDataStorage
+from ereuse_devicehub.resources.event.models import WorkbenchRate, BenchmarkDataStorage, \
+    BenchmarkProcessor
 
 from ereuse_rate.rate import BaseRate
 from ereuse_rate.rate import DataStorageRate as _DataStorageRate
@@ -85,16 +86,18 @@ class ProcessorRate(_ProcessorRate):
     # TODO: Multiply i1, i2,... for a constant
     DEFAULT_SCORE = 4000
 
-    def compute(self, processor_device: Processor, rate: WorkbenchRate):
+    def compute(self, processor: Processor, rate: WorkbenchRate):
         """ Compute processor rate
             Obs: cores and speed are possible NULL value
-            :return: result is a rate (score) of Processor characteristic
+            :return: result is a rate (score) of Processor characteristics
         """
-        cores = processor_device.cores or self.DEFAULT_CORES
-        speed = processor_device.speed or self.DEFAULT_SPEED
+        cores = processor.cores or self.DEFAULT_CORES
+        speed = processor.speed or self.DEFAULT_SPEED
+        benchmark_cpu = next(e for e in processor.events if isinstance(e, BenchmarkProcessor))
+        benchmark_cpu = benchmark_cpu.rate or self.DEFAULT_SCORE
 
         # STEP: Fusion components
-        processor_rate = (self.DEFAULT_SCORE + speed * 2000 * cores) / 2  # todo magic number!
+        processor_rate = (benchmark_cpu + speed * 2000 * cores) / 2  # todo magic number!
 
         # STEP: Normalize values
         processor_norm = self.norm(processor_rate, *self.PROCESSOR_NORM) or 0
@@ -122,7 +125,7 @@ class RamRate(_RamRate):
     # ram.size.weight; ram.speed.weight;
     RAM_WEIGHTS = 0.7, 0.3
 
-    def compute(self, ram_devices, rate: WorkbenchRate):
+    def compute(self, ram_devices: Iterable[RamModule], rate: WorkbenchRate):
         """
         Obs: RamModule.speed is possible NULL value & size != NULL or NOT??
         :return: result is a rate (score) of all RamModule components
@@ -132,17 +135,18 @@ class RamRate(_RamRate):
 
         # STEP: Filtering, data cleaning and merging of component parts
         for ram in ram_devices:
-            size += ram.size or 0
-            speed += (ram.speed or 0) * size
+            _size = ram.size or 0
+            size += _size
+            speed += (ram.speed or 0) * _size
 
         # STEP: Fusion components
-        # Check almost have one ram module
-        if ram_devices:
-            speed /= len(ram_devices)
+        # To guarantee that there will be no 0/0
+        if size:
+            speed /= size
 
         # STEP: Normalize values
-            size_norm = self.norm(size, *self.SIZE_NORM)
-            ram_speed_norm = self.norm(speed, *self.RAM_SPEED_NORM)
+            size_norm = self.norm(size, *self.SIZE_NORM) or 0
+            ram_speed_norm = self.norm(speed, *self.RAM_SPEED_NORM) or 0
 
         # STEP: Compute rate/score from every component
             # Calculate size_rate
@@ -161,11 +165,10 @@ class RamRate(_RamRate):
                 ram_speed_rate = self.rate_log(ram_speed_norm)
 
         # STEP: Fusion Characteristics
-            ram_rates = size_rate, ram_speed_rate
-            rate.ram = self.harmonic_mean(self.RAM_WEIGHTS, ram_rates)
+            rate.ram = self.harmonic_mean(self.RAM_WEIGHTS, rates=(size_rate, ram_speed_rate))
             return rate.ram
         else:
-            return 0
+            return 1
 
 
 class DataStorageRate(_DataStorageRate):
@@ -181,7 +184,7 @@ class DataStorageRate(_DataStorageRate):
 
     def compute(self, data_storage_devices: Iterable[DataStorage], rate: WorkbenchRate):
         """
-        Obs: size is possible NULL value & read_speed and write_speed != NULL
+        Obs: size != NULL and 0 value & read_speed and write_speed != NULL
         :return: result is a rate (score) of all DataStorage devices
         """
         size = 0
@@ -236,4 +239,5 @@ class DataStorageRate(_DataStorageRate):
             rate.data_storage = self.harmonic_mean(self.DATA_STORAGE_WEIGHTS, data_storage_rates)
             return rate.data_storage
         else:
-            return 0
+            # In case of no DataStorage has been detected (DataStorage.size == 0)
+            return 1
