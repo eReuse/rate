@@ -14,16 +14,13 @@ from ereuse_rate.rate import ProcessorRate as _ProcessorRate
 
 # todo need to return components rates in funcs??
 # todo if no return assign then rate_c = 1 is assigned
+# todo fix corner cases, like components characteristics == None
 
 
 class Rate(BaseRate):
     """
     Rate all components in Computer
     """
-    # todo need it WEIGHTS if have it in BaseRate
-    # Components general weights, Processor has 50%, Storage has 20%
-    # and Ram has 30% of weight over total score, used in harmonic mean
-    COMPONENTS_WEIGHTS = 0.5, 0.2, 0.3
 
     class Range(Enum):
         @classmethod
@@ -61,14 +58,16 @@ class Rate(BaseRate):
         assert device.type == 'Desktop' or 'Laptop' or 'Server'
         assert isinstance(rate, WorkbenchRate)
 
+        # Treat the same wat with HardDrive and SolidStateDrive like (DataStorage)
         clause = lambda x: DataStorage.t if isinstance(x, DataStorage) else x.t
         rates = namedtuple('Rates', [DataStorage.t, Processor.t, RamModule.t])
         for type, components in groupby(sorted(device.components, key=clause), key=clause):
+            # Takes only 1 processor
             if type == Processor.t:
                 components = next(components)
             setattr(rates, type, self.RATES[type].compute(components, rate))
 
-        rate_components = self.harmonic_mean_3(rate.processor, rate.data_storage, rate.ram)
+        rate_components = self.harmonic_mean_rates(rate.processor, rate.data_storage, rate.ram)
         rate.appearance = self.Appearance.from_devicehub(rate.appearance_range).value
         rate.functionality = self.Functionality.from_devicehub(rate.functionality_range).value
 
@@ -96,6 +95,7 @@ class ProcessorRate(_ProcessorRate):
         # todo for processor_device in processors; more than one processor
         cores = processor.cores or self.DEFAULT_CORES
         speed = processor.speed or self.DEFAULT_SPEED
+        # todo fix StopIteration if don't exists BenchmarkProcessor
         benchmark_cpu = next(e for e in processor.events if isinstance(e, BenchmarkProcessor))
         benchmark_cpu = benchmark_cpu.rate or self.DEFAULT_SCORE
 
@@ -160,17 +160,20 @@ class RamRate(_RamRate):
             if size_norm >= self.CLOG:
                 size_rate = self.rate_log(size_norm)
             # Calculate read_speed_rate
-            if self.CEXP <= size_norm < self.CLIN:
+            if self.CEXP <= ram_speed_norm < self.CLIN:
                 ram_speed_rate = self.rate_exp(ram_speed_norm)
             if self.CLIN <= ram_speed_norm < self.CLOG:
                 ram_speed_rate = self.rate_lin(ram_speed_norm)
             if ram_speed_norm >= self.CLOG:
                 ram_speed_rate = self.rate_log(ram_speed_norm)
-
+            # Speed = None, value of ram_speed_rate==1??
+            # if not speed:
+            #    ram_speed_rate = 1
             # STEP: Fusion Characteristics
             rate.ram = self.harmonic_mean(self.RAM_WEIGHTS, rates=(size_rate, ram_speed_rate))
             return rate.ram
         else:
+            # Return 1, 'cause if no RamModule characteristics, ram_rate = 1.
             return 1
 
 
@@ -196,6 +199,7 @@ class DataStorageRate(_DataStorageRate):
 
         # STEP: Filtering, data cleaning and merging of component parts
         for storage in data_storage_devices:
+            # todo fix StopIteration if don't exists BenchmarkDataStorage
             benchmark = next(e for e in storage.events if isinstance(e, BenchmarkDataStorage))
             # prevent NULL value
             _size = storage.size or 0

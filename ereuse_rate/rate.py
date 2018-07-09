@@ -6,6 +6,7 @@ from ereuse_devicehub.resources.event.models import WorkbenchRate
 
 
 class BaseRate:
+
     """growing exponential from this value"""
     CEXP = 0
     """growing lineal starting on this value"""
@@ -43,11 +44,15 @@ class BaseRate:
     def harmonic_mean(weights: Iterable[float], rates: Iterable[float]):
         return sum(weights) / sum(char / rate for char, rate in zip(weights, rates))
 
-    def harmonic_mean_3(self, rate_processor, rate_storage, rate_ram):
+    def harmonic_mean_rates(self, rate_processor, rate_storage, rate_ram):
+        """
+        Merging components
+        """
         total_weights = self.PROCESSOR_WEIGHT + self.DATA_STORAGE_WEIGHT + self.RAM_WEIGHT
-        # todo always total_weights == 1
+
         total_rate = self.PROCESSOR_WEIGHT / rate_processor + \
                      self.DATA_STORAGE_WEIGHT / rate_storage + self.RAM_WEIGHT / rate_ram
+
         return total_weights / total_rate
 
 
