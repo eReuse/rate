@@ -77,11 +77,20 @@ def test_data_storage_size_is_null():
     assert hdd_rate_old == hdd_rate_new, 'DataStorageRate returns incorrect value(rate)'
 
 
-@pytest.mark.xfail(reason='Duplicate test')
+@pytest.mark.xfail(reason='Debug test')
 def test_no_data_storage():
     """
-    Test with 0 data storage devices
+    Test without data storage devices
     """
+    hdd_rate_old = 1
+    hdd_null = HardDrive()
+
+    data_storage_rate = DataStorageRate().compute([hdd_null], WorkbenchRate())
+    # Limiting rate value to two decimal points
+    hdd_rate_new = float("{0:.2f}".format(data_storage_rate))
+
+    assert hdd_rate_old == hdd_rate_new, 'DataStorageRate returns incorrect value(rate)'
+
 
 # RAM MODULE DEVICE TEST
 
@@ -150,7 +159,7 @@ def test_ram_module_size_is_0():
     # expected score from previous rate version of pc_798
     ram_rate_old = 1
 
-    ram0 = RamModule(size=0, speed=None)
+    ram0 = RamModule(size=0, speed=888)
 
     ram_rate = RamRate().compute([ram0], WorkbenchRate())
     # Limiting rate value to two decimal points
@@ -163,10 +172,11 @@ def test_ram_speed_is_null():
     """
     Test where RamModule.speed is NULL (not detected) but has size
     """
-    # expected score from previous rate version on pc_
-    ram_rate_old = 1
+    # expected score from previous rate version on pc_804
+    # todo check previous score, find a pc with speed == NULL
+    ram_rate_old = 1.85
 
-    ram0 = RamModule(size=1024, speed=None)
+    ram0 = RamModule(size=2048, speed=None)
 
     ram_rate = RamRate().compute([ram0], WorkbenchRate())
     # Limiting rate value to two decimal points
@@ -178,9 +188,17 @@ def test_ram_speed_is_null():
 @pytest.mark.xfail(reason='Duplicate test')
 def test_no_ram_module():
     """
-    Test with 0 data storage devices
+    Test without RamModule
     """
+    ram_rate_old = 1
 
+    ram0 = RamModule()
+
+    ram_rate = RamRate().compute([ram0], WorkbenchRate())
+    # Limiting rate value to two decimal points
+    ram_rate_new = float("{0:.2f}".format(ram_rate))
+
+    assert ram_rate_old == ram_rate_new, 'RamRate returns incorrect value(rate)'
 
 # PROCESSOR DEVICE TEST
 
@@ -248,7 +266,7 @@ def test_processor_with_null_cores():
     processor_rate = ProcessorRate().compute(cpu, WorkbenchRate())
     # Limiting rate value to two decimal points
     processor_rate_new = float("{0:.2f}".format(processor_rate))
-    # todo processor_rate_old = x??
+    # todo processor_rate_old == 1??
 
     assert processor_rate_new == 1, 'ProcessorRate returns incorrect value(rate)'
 
@@ -264,14 +282,21 @@ def test_processor_with_null_speed():
     processor_rate = ProcessorRate().compute(cpu, WorkbenchRate())
     # Limiting rate value to two decimal points
     processor_rate_new = float("{0:.2f}".format(processor_rate))
-    # todo processor_rate_old = x??
+    # todo processor_rate_old == 1.06 ??
 
-    assert processor_rate_new == 1, 'ProcessorRate returns incorrect value(rate)'
+    assert processor_rate_new == 1.06, 'ProcessorRate returns incorrect value(rate)'
 
 
-@pytest.mark.xfail(reason='Make test')
+@pytest.mark.xfail(reason='Debug test')
 def test_no_processor():
     """
     Test with any processor device
-    :return:
     """
+    cpu = Processor()
+
+    processor_rate = ProcessorRate().compute(cpu, WorkbenchRate())
+    # Limiting rate value to two decimal points
+    processor_rate_new = float("{0:.2f}".format(processor_rate))
+    # todo processor_rate_old == 1 ??
+
+    assert processor_rate_new == 1, 'ProcessorRate returns incorrect value(rate)'

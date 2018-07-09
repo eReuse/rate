@@ -89,7 +89,6 @@ def test_computer_rate():
     # add functionality and appearance range
     rate_pc_1193 = WorkbenchRate(appearance_range=AppearanceRange.A,
                                  functionality_range=FunctionalityRange.A)
-
     # Compute all components rates and general rating
     Rate().compute(pc_1193, rate_pc_1193)
 
