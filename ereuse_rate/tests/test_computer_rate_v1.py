@@ -8,6 +8,7 @@ from ereuse_rate.workbench.v1_0 import Rate
 """ LIST DUMMIES COMPUTERS COMPONENTS CHARACTERISTICS
 
     pc_1193 = Computer()
+    price = 92.2
     # add components characteristics of pc with id = 1193
     hdd_1969 = HardDrive(size=476940)
     hdd_1969.events_one.add(BenchmarkDataStorage(read_speed=126, write_speed=29.8))
@@ -24,6 +25,7 @@ from ereuse_rate.workbench.v1_0 import Rate
     Processor_rate = 3.95
 
     pc_1201 = Computer()
+    price = 69.6
     hdd_3054 = HardDrive(size=476940)
     hdd_3054.events_one.add(BenchmarkDataStorage(read_speed=158, write_speed=34.7))
     ram1 = RamModule(size=2048, speed=1333)
@@ -38,6 +40,7 @@ from ereuse_rate.workbench.v1_0 import Rate
     Processor_rate = 3.93
 
     pc_79 = Computer()
+    price = VeryLow
     hdd_81 = HardDrive(size=76319)
     hdd_81.events_one.add(BenchmarkDataStorage(read_speed=72.2, write_speed=24.3))
     ram1 = RamModule(size=512, speed=667)
@@ -55,6 +58,7 @@ from ereuse_rate.workbench.v1_0 import Rate
     Processor_rate = 1
 
     pc_798 = Computer()
+    price = 50
     hdd_1556 = HardDrive(size=152587)
     hdd_1556.events_one.add(BenchmarkDataStorage(read_speed=78.1, write_speed=24.4))
     ram0 = RamModule(size=0, speed=None)
@@ -69,7 +73,7 @@ from ereuse_rate.workbench.v1_0 import Rate
     Processor_rate = 4.09
 """
 
-
+# TODO add other dummy pcs
 def test_computer_rate():
     """
     Test Rate v1
