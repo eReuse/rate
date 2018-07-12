@@ -3,14 +3,13 @@ from enum import Enum
 from itertools import groupby
 from typing import Iterable
 
-from ereuse_devicehub.resources.device.models import Computer, DataStorage, RamModule, Processor
-from ereuse_devicehub.resources.event.models import WorkbenchRate, BenchmarkDataStorage, \
-    BenchmarkProcessor
+from ereuse_devicehub.resources.device.models import Computer, DataStorage, Processor, RamModule
+from ereuse_devicehub.resources.event.models import BenchmarkDataStorage, BenchmarkProcessor, \
+    WorkbenchRate
 
-from ereuse_rate.rate import BaseRate
-from ereuse_rate.rate import DataStorageRate as _DataStorageRate
-from ereuse_rate.rate import RamRate as _RamRate
-from ereuse_rate.rate import ProcessorRate as _ProcessorRate
+from ereuse_rate.rate import BaseRate, DataStorageRate as _DataStorageRate, \
+    ProcessorRate as _ProcessorRate, RamRate as _RamRate
+
 
 # todo need to return components rates in funcs??
 # todo if no return assign then rate_c = 1 is assigned
@@ -71,7 +70,12 @@ class Rate(BaseRate):
         rate.appearance = self.Appearance.from_devicehub(rate.appearance_range).value
         rate.functionality = self.Functionality.from_devicehub(rate.functionality_range).value
 
-        rate.rating = max(rate_components + rate.functionality + rate.appearance, 0)
+        rate.rating = round(max(rate_components + rate.functionality + rate.appearance, 0), 2)
+        rate.appearance = round(rate.appearance, 2)
+        rate.functionality = round(rate.functionality, 2)
+        rate.processor = round(rate.processor, 2)
+        rate.ram = round(rate.ram, 2)
+        rate.data_storage = round(rate.data_storage, 2)
 
 
 class ProcessorRate(_ProcessorRate):
@@ -148,8 +152,8 @@ class RamRate(_RamRate):
             speed /= size
 
             # STEP: Normalize values
-            size_norm = self.norm(size, *self.SIZE_NORM) or 0
-            ram_speed_norm = self.norm(speed, *self.RAM_SPEED_NORM) or 0
+            size_norm = max(self.norm(size, *self.SIZE_NORM), 0)
+            ram_speed_norm = max(self.norm(speed, *self.RAM_SPEED_NORM), 0)
 
             # STEP: Compute rate/score from every component
             # Calculate size_rate

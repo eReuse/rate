@@ -1,7 +1,7 @@
-from ereuse_devicehub.resources.device.models import Computer, HardDrive, RamModule, Processor
-from ereuse_devicehub.resources.enums import FunctionalityRange, AppearanceRange
-from ereuse_devicehub.resources.event.models import BenchmarkDataStorage, WorkbenchRate, \
-    BenchmarkProcessor
+from ereuse_devicehub.resources.device.models import Desktop, HardDrive, Processor, RamModule
+from ereuse_devicehub.resources.enums import AppearanceRange, FunctionalityRange
+from ereuse_devicehub.resources.event.models import BenchmarkDataStorage, BenchmarkProcessor, \
+    WorkbenchRate
 
 from ereuse_rate.workbench.v1_0 import Rate
 
@@ -75,7 +75,7 @@ def test_computer_rate():
     Test Rate v1
     """
     # Create a new Computer with components characteristics of pc with id = 1193
-    pc_1193 = Computer()
+    pc_1193 = Desktop()
     hdd_1969 = HardDrive(size=476940)
     hdd_1969.events_one.add(BenchmarkDataStorage(read_speed=126, write_speed=29.8))
     cpu = Processor(cores=2, speed=3.4)
@@ -107,4 +107,3 @@ def test_computer_rate():
     rating = 4.61
     assert float("{0:.2f}".format(rate_pc_1193.rating)) == rating, \
         'Rate returns incorrect value(rate)'
-

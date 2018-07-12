@@ -1,49 +1,84 @@
+from distutils.version import StrictVersion
+from typing import Set, Union
+
 from ereuse_devicehub.resources.device.models import Device
-from ereuse_devicehub.resources.enums import AggregateRatingVersions
-from ereuse_devicehub.resources.event.models import AggregateRate, PhotoboxRate, Rate, \
+from ereuse_devicehub.resources.enums import RatingSoftware
+from ereuse_devicehub.resources.event.models import AggregateRate, EreusePrice, Rate, \
     WorkbenchRate
+from sqlalchemy_utils import Currency
 
 from ereuse_rate.workbench import v1_0
 
 RATE_TYPES = {
     WorkbenchRate: {
-        '1.0': v1_0.Rate()
+        RatingSoftware.Ereuse: {
+            '1.0': v1_0.Rate()
+        },
+        RatingSoftware.Commercial: {
+        }
     }
 }
 
 
 def rate(device: Device, rate: Rate):
     """
-    Rates the passed-in ``device`` and ``rate``. This method mutates
-    ``rate``.
-    :param device:
-    :param rate: A rate with the required fields set by an agent.
+    Rates the passed-in ``rate`` using values from the rate itself
+    and the ``device``.
+
+    This method mutates ``rate``.
+
+    :param device: The device to use as a model.
+    :param rate: A half-filled rate.
     """
     cls = rate.__class__
     assert cls in RATE_TYPES, 'Rate type {} not supported.'.format(cls)
-    assert str(rate.algorithm_version) in RATE_TYPES[cls], 'Rate version {} not supported.' \
-                                                           ''.format(rate.algorithm_version)
-    RATE_TYPES[cls][str(rate.algorithm_version)].compute(device, rate)
+    assert rate.software in RATE_TYPES[cls], 'Rate soft {} not supported.'.format(rate.software)
+    assert str(rate.version) in RATE_TYPES[cls][rate.software], \
+        'Rate version {} not supported.'.format(rate.version)
+    RATE_TYPES[cls][rate.software][str(rate.version)].compute(device, rate)
 
 
-def aggregate_ratings(device: Device, aggregate_rate: AggregateRate):
+def main(rating_model: WorkbenchRate,
+         software: RatingSoftware,
+         version: StrictVersion,
+         currency: Currency) -> Set[Union[WorkbenchRate, AggregateRate, EreusePrice]]:
     """
-    Aggregates the ratings for the passed-in ``device`` and the
-    ``aggregate_rate``. This method mutates ``aggregate_rate``.
+    Generates all the rates (per software and version) for a given
+    half-filled rate acting as a model, and finally it generates
+    an ``AggregateRating`` with the rate that matches the
+    ``software`` and ``version``.
 
-    As for now, only version X of :class:`ereuse_devicehub.resources.
-    event.models.WorkbenchRate` and version Y of :class:`ereuse_devicehub.
-    resources.event.models.PhotoboxRate` are allowed.
+    This method mutates ``rating_model`` by fulfilling it and
+    ``rating_model.device`` by adding the new rates.
 
-    :param aggregate_rate: A rate with a linked
-                           :class:`ereuse_devicehub.resources.event.
-                           models.WorkbenchRate` or/and multiple
-                           :class:`ereuse_devicehub.resources.event.
-                           models.PhotoboxRate`.
-    :return:
+    :return: A set of rates with the ``rate`` value computed, where
+             the first rate is the ``rating_model``.
     """
-    assert AggregateRatingVersions(aggregate_rate.algorithm_version) == AggregateRatingVersions.v1, \
-        'This version of AggregateRating is not supported.'
-    assert all(isinstance(r, (PhotoboxRate, WorkbenchRate)) for r in aggregate_rate.ratings), \
-        'All rates must be a PhotoboxRate or a WorkbenchRate'
-    pass
+    assert rating_model.device
+    events = set()
+    for soft, value in RATE_TYPES[rating_model.__class__].items():
+        for vers, func in value.items():
+            if not rating_model.rating:  # Fill the rating before creating another rate
+                rating = rating_model
+            else:  # original rating was filled already; use a new one
+                rating = WorkbenchRate(
+                    labelling=rating_model.labelling,
+                    appearance_range=rating_model.appearance_range,
+                    functionality_range=rating_model.functionality_range,
+                    device=rating_model.device,
+                )
+            rating.software = soft
+            rating.version = vers
+            rate(rating_model.device, rating)
+            events.add(rating)
+            if soft == software and vers == version:
+                aggregation = AggregateRate(
+                    software=rating.software,
+                    rating=rating.rating,
+                    version=StrictVersion('1.0'),
+                    device=rating_model.device
+                )
+                aggregation.ratings.add(rating)
+                events.add(aggregation)
+                events.add(EreusePrice(aggregation, currency=currency))
+    return events
