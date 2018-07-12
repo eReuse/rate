@@ -4,7 +4,19 @@ from ereuse_devicehub.resources.event.models import BenchmarkDataStorage, Workbe
     BenchmarkProcessor
 
 from ereuse_rate.workbench.v1_0 import DataStorageRate, RamRate, ProcessorRate
+"""
+Tests of compute rating for every component in a Device
+Rates test done:
+        -DataStorage
+        -RamModule
+        -Processor
 
+Excluded cases in tests
+
+- No Processor
+-
+
+"""
 
 # DATA STORAGE DEVICE TEST
 
@@ -77,14 +89,13 @@ def test_data_storage_size_is_null():
     assert hdd_rate_old == hdd_rate_new, 'DataStorageRate returns incorrect value(rate)'
 
 
-@pytest.mark.xfail(reason='Debug test')
 def test_no_data_storage():
     """
     Test without data storage devices
     """
     hdd_rate_old = 1
     hdd_null = HardDrive()
-
+    hdd_null.events_one.add(BenchmarkDataStorage(read_speed=0, write_speed=0))
     data_storage_rate = DataStorageRate().compute([hdd_null], WorkbenchRate())
     # Limiting rate value to two decimal points
     hdd_rate_new = float("{0:.2f}".format(data_storage_rate))
@@ -106,7 +117,6 @@ def test_ram_rate():
 
     ram1 = RamModule(size=2048, speed=1333)
 
-    # calculate Ram Rate, todo new fixture??
     ram_rate = RamRate().compute([ram1], WorkbenchRate())
     # Limiting rate value to two decimal points
     ram_rate_new = float("{0:.2f}".format(ram_rate))
@@ -170,7 +180,8 @@ def test_ram_module_size_is_0():
 
 def test_ram_speed_is_null():
     """
-    Test where RamModule.speed is NULL (not detected) but has size
+    Test where RamModule.speed is NULL (not detected) but has size.
+    Pc ID = 795(1542), 745(1535), 804(1549)
     """
     # expected score from previous rate version on pc_804
     # todo check previous score, find a pc with speed == NULL
@@ -184,8 +195,18 @@ def test_ram_speed_is_null():
 
     assert ram_rate_old == ram_rate_new, 'RamRate returns incorrect value(rate)'
 
+    # expected score from previous rate version on pc_49
+    ram_rate_old = 1.25
 
-@pytest.mark.xfail(reason='Duplicate test')
+    ram0 = RamModule(size=1024, speed=None)
+
+    ram_rate = RamRate().compute([ram0], WorkbenchRate())
+    # Limiting rate value to two decimal points
+    ram_rate_new = float("{0:.2f}".format(ram_rate))
+
+    assert ram_rate_old == ram_rate_new, 'RamRate returns incorrect value(rate)'
+
+
 def test_no_ram_module():
     """
     Test without RamModule
@@ -285,18 +306,3 @@ def test_processor_with_null_speed():
     # todo processor_rate_old == 1.06 ??
 
     assert processor_rate_new == 1.06, 'ProcessorRate returns incorrect value(rate)'
-
-
-@pytest.mark.xfail(reason='Debug test')
-def test_no_processor():
-    """
-    Test with any processor device
-    """
-    cpu = Processor()
-
-    processor_rate = ProcessorRate().compute(cpu, WorkbenchRate())
-    # Limiting rate value to two decimal points
-    processor_rate_new = float("{0:.2f}".format(processor_rate))
-    # todo processor_rate_old == 1 ??
-
-    assert processor_rate_new == 1, 'ProcessorRate returns incorrect value(rate)'
