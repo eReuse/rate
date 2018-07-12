@@ -9,10 +9,10 @@ from ereuse_devicehub.resources.event.models import WorkbenchRate, BenchmarkData
 
 from ereuse_rate.rate import BaseRate
 from ereuse_rate.rate import DataStorageRate as _DataStorageRate
-from ereuse_rate.rate import RamRate as _RamRate
 from ereuse_rate.rate import ProcessorRate as _ProcessorRate
+from ereuse_rate.rate import RamRate as _RamRate
 
-# todo need to return components rates in funcs??
+
 # todo if no return assign then rate_c = 1 is assigned
 # todo fix corner cases, like components characteristics == None
 
@@ -95,7 +95,6 @@ class ProcessorRate(_ProcessorRate):
         # todo for processor_device in processors; more than one processor
         cores = processor.cores or self.DEFAULT_CORES
         speed = processor.speed or self.DEFAULT_SPEED
-        # todo fix StopIteration if don't exists BenchmarkProcessor
         benchmark_cpu = next(e for e in processor.events if isinstance(e, BenchmarkProcessor))
         benchmark_cpu = benchmark_cpu.rate or self.DEFAULT_SCORE
 
@@ -103,7 +102,7 @@ class ProcessorRate(_ProcessorRate):
         processor_rate = (benchmark_cpu + speed * 2000 * cores) / 2  # todo magic number!
 
         # STEP: Normalize values
-        processor_norm = self.norm(processor_rate, *self.PROCESSOR_NORM) or 0
+        processor_norm = max(self.norm(processor_rate, *self.PROCESSOR_NORM), 0)
 
         # STEP: Compute rate/score from every component
         # Calculate processor_rate
@@ -125,6 +124,8 @@ class RamRate(_RamRate):
     # ram.size.xMin; ram.size.xMax
     SIZE_NORM = 256, 8192
     RAM_SPEED_NORM = 133, 1333
+    # ram.speed.factor;
+    RAM_SPEED_FACTOR = 3.7
     # ram.size.weight; ram.speed.weight;
     RAM_WEIGHTS = 0.7, 0.3
 
@@ -133,14 +134,17 @@ class RamRate(_RamRate):
         Obs: RamModule.speed is possible NULL value & size != NULL or NOT??
         :return: result is a rate (score) of all RamModule components
         """
-        size = 0
-        speed = 0
+        size = 0.0
+        speed = 0.0
 
         # STEP: Filtering, data cleaning and merging of component parts
         for ram in ram_devices:
             _size = ram.size or 0
             size += _size
-            speed += (ram.speed or 0) * _size
+            if ram.speed:
+                speed += (ram.speed or 0) * _size
+            else:
+                speed += (_size / self.RAM_SPEED_FACTOR) * _size
 
         # STEP: Fusion components
         # To guarantee that there will be no 0/0
@@ -148,8 +152,8 @@ class RamRate(_RamRate):
             speed /= size
 
             # STEP: Normalize values
-            size_norm = self.norm(size, *self.SIZE_NORM) or 0
-            ram_speed_norm = self.norm(speed, *self.RAM_SPEED_NORM) or 0
+            size_norm = max(self.norm(size, *self.SIZE_NORM), 0)
+            ram_speed_norm = max(self.norm(speed, *self.RAM_SPEED_NORM), 0)
 
             # STEP: Compute rate/score from every component
             # Calculate size_rate
@@ -159,16 +163,14 @@ class RamRate(_RamRate):
                 size_rate = self.rate_lin(size_norm)
             if size_norm >= self.CLOG:
                 size_rate = self.rate_log(size_norm)
-            # Calculate read_speed_rate
+            # Calculate ram_speed_rate
             if self.CEXP <= ram_speed_norm < self.CLIN:
                 ram_speed_rate = self.rate_exp(ram_speed_norm)
             if self.CLIN <= ram_speed_norm < self.CLOG:
                 ram_speed_rate = self.rate_lin(ram_speed_norm)
             if ram_speed_norm >= self.CLOG:
                 ram_speed_rate = self.rate_log(ram_speed_norm)
-            # Speed = None, value of ram_speed_rate==1??
-            # if not speed:
-            #    ram_speed_rate = 1
+
             # STEP: Fusion Characteristics
             rate.ram = self.harmonic_mean(self.RAM_WEIGHTS, rates=(size_rate, ram_speed_rate))
             return rate.ram
@@ -201,7 +203,7 @@ class DataStorageRate(_DataStorageRate):
         for storage in data_storage_devices:
             # todo fix StopIteration if don't exists BenchmarkDataStorage
             benchmark = next(e for e in storage.events if isinstance(e, BenchmarkDataStorage))
-            # prevent NULL value
+            # prevent NULL values
             _size = storage.size or 0
             size += _size
             read_speed += benchmark.read_speed * _size
@@ -214,9 +216,9 @@ class DataStorageRate(_DataStorageRate):
             write_speed /= size
 
             # STEP: Normalize values
-            size_norm = self.norm(size, *self.SIZE_NORM)
-            read_speed_norm = self.norm(read_speed, *self.READ_SPEED_NORM)
-            write_speed_norm = self.norm(write_speed, *self.WRITE_SPEED_NORM)
+            size_norm = max(self.norm(size, *self.SIZE_NORM), 0)
+            read_speed_norm = max(self.norm(read_speed, *self.READ_SPEED_NORM), 0)
+            write_speed_norm = max(self.norm(write_speed, *self.WRITE_SPEED_NORM), 0)
 
             # STEP: Compute rate/score from every component
             # Calculate size_rate
