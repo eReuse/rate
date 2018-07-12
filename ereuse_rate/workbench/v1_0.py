@@ -129,6 +129,8 @@ class RamRate(_RamRate):
     # ram.size.xMin; ram.size.xMax
     SIZE_NORM = 256, 8192
     RAM_SPEED_NORM = 133, 1333
+    # ram.speed.factor
+    RAM_SPEED_FACTOR = 3.7
     # ram.size.weight; ram.speed.weight;
     RAM_WEIGHTS = 0.7, 0.3
 

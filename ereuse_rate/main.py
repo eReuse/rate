@@ -11,10 +11,10 @@ from ereuse_rate.workbench import v1_0
 
 RATE_TYPES = {
     WorkbenchRate: {
-        RatingSoftware.Ereuse: {
+        RatingSoftware.ECost: {
             '1.0': v1_0.Rate()
         },
-        RatingSoftware.Commercial: {
+        RatingSoftware.EMarket: {
         }
     }
 }
