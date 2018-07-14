@@ -1,12 +1,11 @@
 import math
 from typing import Iterable
 
-from ereuse_devicehub.resources.device.models import DataStorage, Device, Processor, RamModule
+from ereuse_devicehub.resources.device.models import Device
 from ereuse_devicehub.resources.event.models import WorkbenchRate
 
 
 class BaseRate:
-
     """growing exponential from this value"""
     CEXP = 0
     """growing lineal starting on this value"""
@@ -49,23 +48,7 @@ class BaseRate:
         Merging components
         """
         total_weights = self.PROCESSOR_WEIGHT + self.DATA_STORAGE_WEIGHT + self.RAM_WEIGHT
-
-        total_rate = self.PROCESSOR_WEIGHT / rate_processor + \
-                     self.DATA_STORAGE_WEIGHT / rate_storage + self.RAM_WEIGHT / rate_ram
-
+        total_rate = self.PROCESSOR_WEIGHT / rate_processor \
+                     + self.DATA_STORAGE_WEIGHT / rate_storage \
+                     + self.RAM_WEIGHT / rate_ram
         return total_weights / total_rate
-
-
-class DataStorageRate(BaseRate):
-    def compute(self, devices: Iterable[DataStorage], rate: WorkbenchRate):
-        raise NotImplementedError()
-
-
-class RamRate(BaseRate):
-    def compute(self, devices: Iterable[RamModule], rate: WorkbenchRate):
-        raise NotImplementedError()
-
-
-class ProcessorRate(BaseRate):
-    def compute(self, devices: Iterable[Processor], rate: WorkbenchRate):
-        raise NotImplementedError()

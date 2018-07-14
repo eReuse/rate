@@ -1,15 +1,13 @@
-from collections import namedtuple
 from enum import Enum
 from itertools import groupby
 from typing import Iterable
 
-from ereuse_devicehub.resources.device.models import Computer, DataStorage, Processor, RamModule
+from ereuse_devicehub.resources.device.models import Computer, DataStorage, Desktop, Laptop, \
+    Processor, RamModule, Server
 from ereuse_devicehub.resources.event.models import BenchmarkDataStorage, BenchmarkProcessor, \
     WorkbenchRate
 
-from ereuse_rate.rate import BaseRate, DataStorageRate as _DataStorageRate, \
-    ProcessorRate as _ProcessorRate, RamRate as _RamRate
-
+from ereuse_rate.rate import BaseRate
 
 
 # todo if no return assign then rate_c = 1 is assigned
@@ -45,26 +43,33 @@ class Rate(BaseRate):
     def __init__(self) -> None:
         super().__init__()
         self.RATES = {
-            Processor.t: ProcessorRate(),
-            RamModule.t: RamRate(),
-            DataStorage.t: DataStorageRate()
+            # composition: type: (field, compute class)
+            Processor.t: ('processor', ProcessorRate()),
+            RamModule.t: ('ram', RamRate()),
+            DataStorage.t: ('data_storage', DataStorageRate())
         }
 
     def compute(self, device: Computer, rate: WorkbenchRate):
-        """Compute 'Workbench'Rate computer is a rate (score) ranging from 0 to 4.7
+        """
+        Compute 'Workbench'Rate computer is a rate (score) ranging from 0 to 4.7
         that represents estimating value of use of desktop and laptop computer components
         """
-        assert device.type == 'Desktop' or 'Laptop' or 'Server'
+        assert isinstance(device, (Desktop, Laptop, Server))
         assert isinstance(rate, WorkbenchRate)
 
-        # Treat the same wat with HardDrive and SolidStateDrive like (DataStorage)
+        rate.processor = rate.data_storage = rate.ram = 1  # Init
+
+        # Group cpus, rams, storages and compute their rate
+        # Treat the same way with HardDrive and SolidStateDrive like (DataStorage)
         clause = lambda x: DataStorage.t if isinstance(x, DataStorage) else x.t
-        rates = namedtuple('Rates', [DataStorage.t, Processor.t, RamModule.t])
-        for type, components in groupby(sorted(device.components, key=clause), key=clause):
-            # Takes only 1 processor
-            if type == Processor.t:
+        c = (c for c in device.components if clause(c) in set(self.RATES.keys()))
+        for type, components in groupby(sorted(c, key=clause), key=clause):
+            if type == Processor.t:  # ProcessorRate.compute expects only 1 processor
                 components = next(components)
-            setattr(rates, type, self.RATES[type].compute(components, rate))
+            field, rate_cls = self.RATES[type]  # type: str, BaseRate
+            result = rate_cls.compute(components, rate)
+            if result:
+                setattr(rate, field, result)
 
         rate_components = self.harmonic_mean_rates(rate.processor, rate.data_storage, rate.ram)
         rate.appearance = self.Appearance.from_devicehub(rate.appearance_range).value
@@ -78,7 +83,7 @@ class Rate(BaseRate):
         rate.data_storage = round(rate.data_storage, 2)
 
 
-class ProcessorRate(_ProcessorRate):
+class ProcessorRate(BaseRate):
     """
     Calculate a ProcessorRate of all Processor devices
     """
@@ -118,11 +123,11 @@ class ProcessorRate(_ProcessorRate):
         if processor_norm >= self.CLOG:
             processor_rate = self.rate_log(processor_norm)
 
-        rate.processor = processor_rate
-        return rate.processor
+        assert processor_rate, 'Could not rate processor.'
+        return processor_rate
 
 
-class RamRate(_RamRate):
+class RamRate(BaseRate):
     """
     Calculate a RamRate of all RamModule devices
     """
@@ -177,14 +182,10 @@ class RamRate(_RamRate):
                 ram_speed_rate = self.rate_log(ram_speed_norm)
 
             # STEP: Fusion Characteristics
-            rate.ram = self.harmonic_mean(self.RAM_WEIGHTS, rates=(size_rate, ram_speed_rate))
-            return rate.ram
-        else:
-            # Return 1, 'cause if no RamModule characteristics, ram_rate = 1.
-            return 1
+            return self.harmonic_mean(self.RAM_WEIGHTS, rates=(size_rate, ram_speed_rate))
 
 
-class DataStorageRate(_DataStorageRate):
+class DataStorageRate(BaseRate):
     """
     Calculate the rate of all DataStorage devices
     """
@@ -249,9 +250,5 @@ class DataStorageRate(_DataStorageRate):
                 write_speed_rate = self.rate_exp(write_speed_norm)
 
             # STEP: Fusion Characteristics
-            data_storage_rates = size_rate, read_speed_rate, write_speed_rate
-            rate.data_storage = self.harmonic_mean(self.DATA_STORAGE_WEIGHTS, data_storage_rates)
-            return rate.data_storage
-        else:
-            # In case of no DataStorage has been detected (DataStorage.size == 0)
-            return 1
+            return self.harmonic_mean(self.DATA_STORAGE_WEIGHTS,
+                                      rates=(size_rate, read_speed_rate, write_speed_rate))

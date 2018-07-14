@@ -1,3 +1,4 @@
+from contextlib import suppress
 from distutils.version import StrictVersion
 from typing import Set, Union
 
@@ -5,7 +6,6 @@ from ereuse_devicehub.resources.device.models import Device
 from ereuse_devicehub.resources.enums import RatingSoftware
 from ereuse_devicehub.resources.event.models import AggregateRate, EreusePrice, Rate, \
     WorkbenchRate
-from sqlalchemy_utils import Currency
 
 from ereuse_rate.workbench import v1_0
 
@@ -40,8 +40,7 @@ def rate(device: Device, rate: Rate):
 
 def main(rating_model: WorkbenchRate,
          software: RatingSoftware,
-         version: StrictVersion,
-         currency: Currency) -> Set[Union[WorkbenchRate, AggregateRate, EreusePrice]]:
+         version: StrictVersion) -> Set[Union[WorkbenchRate, AggregateRate, EreusePrice]]:
     """
     Generates all the rates (per software and version) for a given
     half-filled rate acting as a model, and finally it generates
@@ -80,5 +79,7 @@ def main(rating_model: WorkbenchRate,
                 )
                 aggregation.ratings.add(rating)
                 events.add(aggregation)
-                events.add(EreusePrice(aggregation, currency=currency))
+                with suppress(ValueError):
+                    # We will have exception if range == VERY_LOW
+                    events.add(EreusePrice(aggregation))
     return events

@@ -1,11 +1,14 @@
 from distutils.version import StrictVersion
+from unittest import mock
+from unittest.mock import MagicMock
 
-from ereuse_devicehub.resources.device.models import Computer, Desktop, HardDrive, Processor, \
+import pytest
+from ereuse_devicehub.resources.device.models import Desktop, HardDrive, Processor, \
     RamModule
 from ereuse_devicehub.resources.enums import AppearanceRange, FunctionalityRange, RatingSoftware
 from ereuse_devicehub.resources.event.models import AggregateRate, BenchmarkDataStorage, \
     BenchmarkProcessor, EreusePrice, WorkbenchRate
-from sqlalchemy_utils import Currency
+from teal.currency import Currency
 
 from ereuse_rate import main
 
@@ -14,7 +17,7 @@ def test_rate():
     """
     Test main rate function
     """
-    pc = Computer()
+    pc = Desktop()
     hdd = HardDrive(size=476940)
     hdd.events_one.add(BenchmarkDataStorage(read_speed=126, write_speed=29.8))
     cpu = Processor(cores=2, speed=3.4)
@@ -26,7 +29,7 @@ def test_rate():
         cpu
     }
     rate = WorkbenchRate(appearance_range=AppearanceRange.A,
-                         software=RatingSoftware.Ereuse,
+                         software=RatingSoftware.ECost,
                          version=StrictVersion('1.0'),
                          functionality_range=FunctionalityRange.A)
     # rate.algorithm_software = 'RateSoftware'
@@ -38,6 +41,16 @@ def test_rate():
     assert float("{0:.2f}".format(rate.rating)) == rating_pc
 
 
+@pytest.fixture()
+def app() -> MagicMock:
+    """Mocks the app in ereuse event models."""
+    with mock.patch('ereuse_devicehub.resources.event.models.app') as mocked_app:
+        # Set default currency so app does not complain
+        app.conifg = {'PRICE_CURRENCY': Currency.EUR}
+        yield mocked_app
+
+
+@pytest.mark.usefixtures('app')
 def test_main():
     rate = WorkbenchRate(
         appearance_range=AppearanceRange.A,
@@ -55,7 +68,7 @@ def test_main():
         cpu
     }
     rate.device = pc
-    events = main.main(rate, RatingSoftware.Ereuse, StrictVersion('1.0'), Currency('EUR'))
+    events = main.main(rate, RatingSoftware.ECost, StrictVersion('1.0'))
     price = next(e for e in events if isinstance(e, EreusePrice))
     assert price.price == 92.2
     assert price.retailer.standard.amount == 40.97

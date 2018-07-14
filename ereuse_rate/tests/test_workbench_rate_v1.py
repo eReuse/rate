@@ -1,9 +1,10 @@
 import pytest
-from ereuse_devicehub.resources.device.models import HardDrive, RamModule, Processor
-from ereuse_devicehub.resources.event.models import BenchmarkDataStorage, WorkbenchRate, \
-    BenchmarkProcessor
+from ereuse_devicehub.resources.device.models import HardDrive, Processor, RamModule
+from ereuse_devicehub.resources.event.models import BenchmarkDataStorage, BenchmarkProcessor, \
+    WorkbenchRate
 
-from ereuse_rate.workbench.v1_0 import DataStorageRate, RamRate, ProcessorRate
+from ereuse_rate.workbench.v1_0 import DataStorageRate, ProcessorRate, RamRate
+
 """
 Tests of compute rating for every component in a Device
 Rates test done:
@@ -17,6 +18,7 @@ Excluded cases in tests
 -
 
 """
+
 
 # DATA STORAGE DEVICE TEST
 
@@ -78,29 +80,21 @@ def test_data_storage_size_is_null():
     BenchmarkDataStorage.write_speed = 0 is like no DataStorage has been detected
     """
     # expected score from previous rate version of pc_2992
-    hdd_rate_old = 1
     hdd_null = HardDrive(size=None)
     hdd_null.events_one.add(BenchmarkDataStorage(read_speed=0, write_speed=0))
 
     data_storage_rate = DataStorageRate().compute([hdd_null], WorkbenchRate())
-    # Limiting rate value to two decimal points
-    hdd_rate_new = float("{0:.2f}".format(data_storage_rate))
-
-    assert hdd_rate_old == hdd_rate_new, 'DataStorageRate returns incorrect value(rate)'
+    assert data_storage_rate is None
 
 
 def test_no_data_storage():
     """
     Test without data storage devices
     """
-    hdd_rate_old = 1
     hdd_null = HardDrive()
     hdd_null.events_one.add(BenchmarkDataStorage(read_speed=0, write_speed=0))
     data_storage_rate = DataStorageRate().compute([hdd_null], WorkbenchRate())
-    # Limiting rate value to two decimal points
-    hdd_rate_new = float("{0:.2f}".format(data_storage_rate))
-
-    assert hdd_rate_old == hdd_rate_new, 'DataStorageRate returns incorrect value(rate)'
+    assert data_storage_rate is None
 
 
 # RAM MODULE DEVICE TEST
@@ -167,15 +161,10 @@ def test_ram_module_size_is_0():
     Test where input data RamModule.size = 0; is like no RamModule has been detected
     """
     # expected score from previous rate version of pc_798
-    ram_rate_old = 1
-
     ram0 = RamModule(size=0, speed=888)
 
     ram_rate = RamRate().compute([ram0], WorkbenchRate())
-    # Limiting rate value to two decimal points
-    ram_rate_new = float("{0:.2f}".format(ram_rate))
-
-    assert ram_rate_old == ram_rate_new, 'RamRate returns incorrect value(rate)'
+    assert ram_rate is None
 
 
 def test_ram_speed_is_null():
@@ -211,18 +200,13 @@ def test_no_ram_module():
     """
     Test without RamModule
     """
-    ram_rate_old = 1
-
     ram0 = RamModule()
 
     ram_rate = RamRate().compute([ram0], WorkbenchRate())
-    # Limiting rate value to two decimal points
-    ram_rate_new = float("{0:.2f}".format(ram_rate))
+    assert ram_rate is None
 
-    assert ram_rate_old == ram_rate_new, 'RamRate returns incorrect value(rate)'
 
 # PROCESSOR DEVICE TEST
-
 
 def test_processor_rate():
     """
