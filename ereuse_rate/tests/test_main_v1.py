@@ -3,12 +3,12 @@ from unittest import mock
 from unittest.mock import MagicMock
 
 import pytest
+import teal.currency
 from ereuse_devicehub.resources.device.models import Desktop, HardDrive, Processor, \
     RamModule
 from ereuse_devicehub.resources.enums import AppearanceRange, FunctionalityRange, RatingSoftware
 from ereuse_devicehub.resources.event.models import AggregateRate, BenchmarkDataStorage, \
     BenchmarkProcessor, EreusePrice, WorkbenchRate
-from teal.currency import Currency
 
 from ereuse_rate import main
 
@@ -32,13 +32,11 @@ def test_rate():
                          software=RatingSoftware.ECost,
                          version=StrictVersion('1.0'),
                          functionality_range=FunctionalityRange.A)
-    # rate.algorithm_software = 'RateSoftware'
     rate.algorithm_version = StrictVersion('1.0')
 
     main.rate(pc, rate)
-    rating_pc = 4.61
 
-    assert float("{0:.2f}".format(rate.rating)) == rating_pc
+    assert rate.rating == 4.61
 
 
 @pytest.fixture()
@@ -46,7 +44,7 @@ def app() -> MagicMock:
     """Mocks the app in ereuse event models."""
     with mock.patch('ereuse_devicehub.resources.event.models.app') as mocked_app:
         # Set default currency so app does not complain
-        app.conifg = {'PRICE_CURRENCY': Currency.EUR}
+        app.conifg = {'PRICE_CURRENCY': teal.currency.Currency.EUR}
         yield mocked_app
 
 

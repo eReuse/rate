@@ -52,7 +52,9 @@ class Rate(BaseRate):
     def compute(self, device: Computer, rate: WorkbenchRate):
         """
         Compute 'Workbench'Rate computer is a rate (score) ranging from 0 to 4.7
-        that represents estimating value of use of desktop and laptop computer components
+        that represents estimating value of use of desktop and laptop computer components.
+
+        This mutates "rate".
         """
         assert isinstance(device, (Desktop, Laptop, Server))
         assert isinstance(rate, WorkbenchRate)
