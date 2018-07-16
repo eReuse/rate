@@ -14,7 +14,7 @@ setup(
     ],
     tests_requires=[
     ],
-    classifiers={
+    classifiers=[
         'Development Status :: 4 - Beta',
         'Environment :: Web Environment',
         'Intended Audience :: Developers',
@@ -24,5 +24,5 @@ setup(
         'Programming Language :: Python :: 3.5',
         'Topic :: Internet :: WWW/HTTP :: Dynamic Content',
         'Topic :: Software Development :: Libraries :: Python Modules'
-    },
+    ],
 )
